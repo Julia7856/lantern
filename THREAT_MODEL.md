@@ -73,16 +73,14 @@ W3C DID (децентрализованная идентичность, без �
   постквантовая криптография (ML-KEM) новая — могут появиться теоретические атаки.
 - ❌ Mesh networks have limited range (~100m for Bluetooth, ~1km for LoRa) /
   mesh-сети имеют ограниченный радиус (~100 м для Bluetooth, ~1 км для LoRa).
-
 ## Responsible use / Ответственное использование
 
 Lantern is a privacy protection tool / Lantern — инструмент защиты приватности.
 Responsibility for use lies with the user / ответственность за использование — на
 пользователе.
 
-White-hat only: journalists, activists, human rights defenders, privacy-conscious
-individuals / только white-hat: журналисты, активисты, правозащитники, люди,
-ценящие приватность.
+For people who value privacy / для людей, которые ценят приватность.
+White-hat only / только white-hat.
 
 ## Reporting / Сообщение об уязвимостях
 
