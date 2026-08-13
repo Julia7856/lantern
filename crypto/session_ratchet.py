@@ -25,7 +25,7 @@ class DoubleRatchet:
         self.name = name
         self.priv = X25519PrivateKey.generate()
         self.root = b"\x00" * 32
-        self.send_chain = None  # initialized after first DH
+        self.send_chain = None
         self.recv_chain = None
 
     @staticmethod
@@ -39,30 +39,35 @@ class DoubleRatchet:
         return self.priv.public_key()
 
     def init_as_sender(self, remote_pub) -> None:
-        """Alice: init with Bob's public key / Алиса: инициализация с публичным ключом Боба."""
+        """Alice: init with Bob's public key / Алиса: старт с публичным ключом Боба."""
         shared = self.priv.exchange(remote_pub)
         self.root = hashlib.sha256(self.root + shared).digest()
         self.send_chain = self.root
 
     def init_as_receiver(self, remote_pub) -> None:
-        """Bob: init with Alice's public key / Боб: инициализация с публичным ключом Алисы."""
+        """Bob: init with Alice's public key / Боб: старт с публичным ключом Алисы."""
         shared = self.priv.exchange(remote_pub)
         self.root = hashlib.sha256(self.root + shared).digest()
         self.recv_chain = self.root
 
     def send_key(self) -> bytes:
-        """Next send key / следующий ключ отправки."""
         mk, self.send_chain = self._step(self.send_chain)
         return mk
 
     def recv_key(self) -> bytes:
-        """Next receive key / следующий ключ приёма."""
         mk, self.recv_chain = self._step(self.recv_chain)
         return mk
 
     def dh_step(self, remote_pub, direction: str) -> None:
-        """New DH pair -> new root -> new chain / новая DH-пара -> новый корень."""
-        self.priv = X25519PrivateKey.generate()
+        """DH ratchet step / шаг DH-рэтчета.
+
+        send: new DH pair (healing) + new send chain.
+        recv: keep own pair, adopt remote's new key + new recv chain.
+        send: новая DH-пара (лечение) + новая цепочка отправки.
+        recv: своя пара остаётся, принимаем новый ключ + новая цепочка приёма.
+        """
+        if direction == "send":
+            self.priv = X25519PrivateKey.generate()
         shared = self.priv.exchange(remote_pub)
         self.root = hashlib.sha256(self.root + shared).digest()
         if direction == "send":
@@ -78,18 +83,25 @@ if __name__ == "__main__":
     alice = DoubleRatchet("Alice")
     bob = DoubleRatchet("Bob")
 
-    # Initial DH / начальный DH
     alice.init_as_sender(bob.public())
     bob.init_as_receiver(alice.public())
 
-    # Two messages each direction / по два сообщения в каждую сторону
-    for i in range(1, 3):
-        ka = alice.send_key()
-        kb = bob.recv_key()
-        print(f"📨 A->B msg {i}: {ka.hex()[:16]}... match: {ka == kb}")
+    ka = alice.send_key()
+    kb = bob.recv_key()
+    print(f"📨 A->B 1: {ka.hex()[:16]}... match: {ka == kb}")
 
-        kb = bob.send_key()
-        ka = alice.recv_key()
-        print(f"📨 B->A msg {i}: {kb.hex()[:16]}... match: {ka == kb}")
+    # Bob replies: send-step for Bob, recv-step for Alice / Боб отвечает: send-шаг у Боба, recv-шаг у Алисы
+    bob.dh_step(alice.public(), "send")
+    alice.dh_step(bob.public(), "recv")
+    kb = bob.send_key()
+    ka = alice.recv_key()
+    print(f"📨 B->A 1: {kb.hex()[:16]}... match: {ka == kb}")
 
-    print("✅ Double ratchet engaged / Double Ratchet задействован")
+    # Alice again / снова Алиса
+    alice.dh_step(bob.public(), "send")
+    bob.dh_step(alice.public(), "recv")
+    ka = alice.send_key()
+    kb = bob.recv_key()
+    print(f"📨 A->B 2: {ka.hex()[:16]}... match: {ka == kb}")
+
+    print("✅ Double Ratchet ping-pong works / пинг-понг работает")
