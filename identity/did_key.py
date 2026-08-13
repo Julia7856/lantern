@@ -35,18 +35,14 @@ def base58btc(data: bytes) -> str:
 
 def create_did() -> dict:
     """Create a did:key identity / Создаёт did:key идентичность."""
-    # 1. Ed25519 keypair / пара ключей
     private_key = Ed25519PrivateKey.generate()
     pub_raw = private_key.public_key().public_bytes(
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
     )
 
-    # 2. multicodec prefix for ed25519-pub: 0xed 0x01
-    prefixed = bytes([0xED, 0x01]) + pub_raw
-
-    # 3. multibase base58btc ('z') -> did:key
-    did = "did:key:z" + base58btc(prefixed)
+    # multicodec ed25519-pub: 0xed 0x01 + multibase 'z'
+    did = "did:key:z" + base58btc(bytes([0xED, 0x01]) + pub_raw)
 
     return {"did": did, "private_key": private_key, "public_key_raw": pub_raw}
 
@@ -69,7 +65,7 @@ if __name__ == "__main__":
     identity = create_did()
     print(f"🪪 Your DID / твой DID: {identity['did']}")
 
-    msg = b"Hello from Lantern / Привет от Lantern"
+    msg = "Hello from Lantern / Привет от Lantern".encode("utf-8")
     sig = sign_message(identity["private_key"], msg)
     print(f"✍️ Signature / подпись: {sig.hex()[:64]}...")
 
