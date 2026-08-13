@@ -1,11 +1,13 @@
 """
-Lantern - end-to-end session demo v2 (with ratchet).
-Демо сквозной сессии v2 (с рэтчетом).
+Lantern - end-to-end session demo v3 (full Double Ratchet).
+Демо сквозной сессии v3 (полный Double Ratchet).
 
 did:key identity + hybrid KEM (X25519 + ML-KEM-768) + AES-256-GCM +
-Ed25519 signature + symmetric ratchet: each message on its own key.
+Ed25519 signature + Double Ratchet (DH + symmetric):
+per-message keys + self-healing after compromise.
 did:key идентичность + гибридный KEM (X25519 + ML-KEM-768) + AES-256-GCM +
-подпись Ed25519 + симметричный рэтчет: каждое сообщение на своём ключе.
+подпись Ed25519 + Double Ratchet (DH + симметричный):
+ключ на каждое сообщение + самолечение после компрометации.
 
 Requires: pip install kyber-py cryptography
 """
@@ -18,7 +20,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from kyber_py.ml_kem import ML_KEM_768
 
-from crypto.ratchet import SymRatchet
+from crypto.session_ratchet import DoubleRatchet
 from identity.did_key import create_did, sign_message, verify_message
 
 
@@ -36,7 +38,7 @@ def hybrid_session_key() -> bytes:
     return hashlib.sha256(x_shared + k_alice).digest()
 
 
-def send(text: bytes, mk: bytes, sender: dict) -> dict:
+def encrypt(text: bytes, mk: bytes, sender: dict) -> dict:
     """Encrypt + sign / зашифровать + подписать."""
     nonce = os.urandom(12)
     ct = AESGCM(mk).encrypt(nonce, text, None)
@@ -44,57 +46,63 @@ def send(text: bytes, mk: bytes, sender: dict) -> dict:
     return {"nonce": nonce, "ct": ct, "sig": sig}
 
 
-def recv(env: dict, mk: bytes, sender_pub) -> bytes:
+def decrypt(env: dict, mk: bytes, sender_pub) -> bytes:
     """Verify + decrypt / проверить подпись + расшифровать."""
     assert verify_message(sender_pub, env["sig"], env["ct"])
     return AESGCM(mk).decrypt(env["nonce"], env["ct"], None)
 
 
 if __name__ == "__main__":
-    print("🏮 Lantern session demo v2 / демо сессии Lantern v2")
+    print("🏮 Lantern session demo v3 / демо сессии Lantern v3")
     print("=" * 56)
 
     # 1. Identities / идентичности
-    alice = create_did()
-    bob = create_did()
+    alice_id = create_did()
+    bob_id = create_did()
     print("👤 Alice & Bob identities created / идентичности созданы")
 
-    # 2. Hybrid root key / гибридный корневой ключ
+    # 2. Post-quantum root / постквантовый корень
     root = hybrid_session_key()
-    print(f"🔐 Hybrid session key / гибридный ключ: {len(root)} bytes")
+    print(f"🔐 Hybrid root (X25519 + ML-KEM) / гибридный корень: {len(root)} bytes")
 
-    # 3. Ratchet chains per direction / цепочки рэтчета на каждое направление
-    ab_root = hashlib.sha256(root + b"alice->bob").digest()
-    ba_root = hashlib.sha256(root + b"bob->alice").digest()
-    ab_send, ab_recv = SymRatchet(ab_root), SymRatchet(ab_root)
-    ba_send, ba_recv = SymRatchet(ba_root), SymRatchet(ba_root)
+    # 3. Double Ratchet on top of the hybrid root / Double Ratchet поверх корня
+    alice = DoubleRatchet("Alice")
+    bob = DoubleRatchet("Bob")
+    alice.root = root
+    bob.root = root
+    alice.init_as_sender(bob.public())
+    bob.init_as_receiver(alice.public())
 
-    # 4. Three messages, each on its own key / три сообщения, каждое на своём ключе
-    flow = [
-        ("alice", "Hello Bob, this is Alice! / Привет, Боб, это Алиса!"),
-        ("bob", "Hi Alice! Loud and clear. / Привет, Алиса! Слышу отлично."),
-        ("alice", "Keys rotate every message 🔐 / Ключи меняются с каждым сообщением 🔐"),
-    ]
+    a_pub = alice_id["private_key"].public_key()
+    b_pub = bob_id["private_key"].public_key()
 
-    keys_seen = []
-    for i, (who, text) in enumerate(flow, 1):
-        if who == "alice":
-            s_chain, r_chain, sender = ab_send, ab_recv, alice
-            label = "Alice -> Bob"
-        else:
-            s_chain, r_chain, sender = ba_send, ba_recv, bob
-            label = "Bob -> Alice"
+    # msg 1: Alice -> Bob / сообщение 1
+    mk_s = alice.send_key()
+    env = encrypt("Hello Bob, this is Alice! / Привет, Боб, это Алиса!".encode("utf-8"), mk_s, alice_id)
+    mk_r = bob.recv_key()
+    plain = decrypt(env, mk_r, a_pub)
+    print(f"📨 1. Alice -> Bob: {plain.decode('utf-8')}")
+    print(f"   🔑 {mk_s.hex()[:16]}... | ✅ sig ok | keys match: {mk_s == mk_r}")
 
-        mk_s = s_chain.next_key()
-        env = send(text.encode("utf-8"), mk_s, sender)
-        mk_r = r_chain.next_key()
-        plain = recv(env, mk_r, sender["private_key"].public_key())
-        keys_seen.append(mk_s)
+    # msg 2: Bob -> Alice + DH step (new pair in header) / + DH-шаг (новая пара в заголовке)
+    bob.dh_step(alice.public(), "send")
+    alice.dh_step(bob.public(), "recv")
+    mk_s = bob.send_key()
+    env = encrypt("Hi Alice! Loud and clear. / Привет, Алиса! Слышу отлично.".encode("utf-8"), mk_s, bob_id)
+    mk_r = alice.recv_key()
+    plain = decrypt(env, mk_r, b_pub)
+    print(f"📨 2. Bob -> Alice: {plain.decode('utf-8')}")
+    print(f"   🔑 {mk_s.hex()[:16]}... | ✅ sig ok | keys match: {mk_s == mk_r}")
 
-        print(f"📨 {i}. {label}: {plain.decode('utf-8')}")
-        print(f"   🔑 {mk_s.hex()[:16]}... | ✅ sig ok | keys match: {mk_s == mk_r}")
+    # msg 3: Alice -> Bob + DH step / + DH-шаг
+    alice.dh_step(bob.public(), "send")
+    bob.dh_step(alice.public(), "recv")
+    mk_s = alice.send_key()
+    env = encrypt("Healed & rotating 🔐 / Лечимся и меняем ключи 🔐".encode("utf-8"), mk_s, alice_id)
+    mk_r = bob.recv_key()
+    plain = decrypt(env, mk_r, a_pub)
+    print(f"📨 3. Alice -> Bob: {plain.decode('utf-8')}")
+    print(f"   🔑 {mk_s.hex()[:16]}... | ✅ sig ok | keys match: {mk_s == mk_r}")
 
-    print(f"🔑 All message keys different / все ключи разные: {len(set(keys_seen)) == len(keys_seen)}")
-    print("✅ Forward secrecy inside session / forward secrecy внутри сессии")
-    print("=" * 56)
-    print("🏮 v2: ratchet engaged / рэтчет задействован")
+    print("✅ Full Double Ratchet in session / полный Double Ratchet в сессии")
+    print("🏮 v3: per-message keys + healing / ключ на сообщение + лечение")
