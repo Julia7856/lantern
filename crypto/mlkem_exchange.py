@@ -1,38 +1,26 @@
 """
-Lantern - Post-quantum key exchange prototype.
-Прототип постквантового обмена ключами.
+Lantern - ML-KEM-768 key exchange prototype.
+Прототип обмена ключами ML-KEM-768.
 
-ML-KEM-768 (NIST FIPS 203, formerly Kyber768).
-Pure Python: pip install kyber-py
+Post-quantum KEM (NIST FIPS 203): keygen -> encaps -> decaps.
+Постквантовый KEM: генерация -> инкапсуляция -> декапсуляция.
 
-Education & honest security research /
-Образование и честные исследования безопасности.
+Requires: pip install kyber-py
 """
 
-from kyber import ML_KEM_768 as kem
+from kyber_py.ml_kem import ML_KEM_768
 
 
-def key_exchange() -> bytes:
-    """Полный цикл ML-KEM-768 / Full ML-KEM-768 cycle."""
-
-    # 1. Алиса создаёт пару ключей / Alice generates a keypair
-    pk_a, sk_a = kem.generate_keypair()
-    print(f"🔑 Public key / публичный ключ: {len(pk_a)} bytes")
-    print(f"🗝️ Secret key / секретный ключ: {len(sk_a)} bytes")
-
-    # 2. Боб инкапсулирует общий секрет / Bob encapsulates the shared secret
-    ciphertext, ss_bob = kem.encapsulate(pk_a)
-    print(f"📦 Ciphertext / шифртекст: {len(ciphertext)} bytes")
-
-    # 3. Алиса декапсулирует / Alice decapsulates
-    ss_alice = kem.decapsulate(ciphertext, sk_a)
-
-    # 4. Проверка / check
-    assert ss_alice == ss_bob, "Secrets differ / секреты не совпадают!"
-    print("✅ Shared secret established / общий секрет установлен")
-    print(f"🤫 Shared secret / общий секрет: {len(ss_alice)} bytes")
-    return ss_alice
+def key_exchange_demo():
+    """Alice and Bob derive a shared secret / Алиса и Боб выводят общий секрет."""
+    ek, dk = ML_KEM_768.keygen()          # Alice / Алиса
+    bob_key, ct = ML_KEM_768.encaps(ek)   # Bob / Боб
+    alice_key = ML_KEM_768.decaps(dk, ct) # Alice / Алиса
+    return alice_key, bob_key
 
 
 if __name__ == "__main__":
-    key_exchange()
+    a, b = key_exchange_demo()
+    print(f"🔑 Alice key / ключ Алисы: {a.hex()[:32]}...")
+    print(f"🔑 Bob key   / ключ Боба:   {b.hex()[:32]}...")
+    print(f"✅ Shared secret matches / общий секрет совпадает: {a == b}")
