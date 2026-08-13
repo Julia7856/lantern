@@ -1,10 +1,10 @@
+
 # 🛡️ Lantern Threat Model / Модель угроз
 
 **Honest security for privacy-first communication /
 Честная безопасность для приватной коммуникации**
 
-> Privacy is a right, not a feature.
-> Приватность — это право, а не функция.
+> Relative privacy on the network / Относительная приватность в сети.
 
 ## Scope / Область действия
 
@@ -68,4 +68,26 @@ fallback) / гибридный транспорт (mesh + fallback на анон
 ## What we do NOT claim / Что мы НЕ утверждаем
 
 - ❌ Lantern is NOT anonymous against a global passive observer with full
-  network visibility — metadata (who talks to
+  network visibility — metadata (who talks to whom, when) may leak /
+  Lantern НЕ анонимен против глобального пассивного наблюдателя с полным обзором
+  сети — метаданные (кто с кем, когда) могут утечь.
+- ❌ Lantern does NOT protect against endpoint compromise (if your phone is
+  compromised, messages are exposed) / Lantern НЕ защищает от компрометации
+  устройства (если телефон скомпрометирован, сообщения раскрыты).
+- ❌ Post-quantum cryptography (ML-KEM) is new — theoretical attacks may emerge /
+  постквантовая криптография (ML-KEM) новая — могут появиться теоретические атаки.
+- ❌ Mesh networks have limited range (~100m for Bluetooth, ~1km for LoRa) /
+  mesh-сети имеют ограниченный радиус (~100 м для Bluetooth, ~1 км для LoRa).
+
+## Responsible use / Ответственное использование
+
+Lantern is a privacy protection tool / Lantern — инструмент защиты приватности.
+Responsibility for use lies with the user / ответственность за использование — на
+пользователе.
+
+For people who value privacy / для людей, которые ценят приватность.
+White-hat only / только white-hat.
+
+## Reporting / Сообщение об уязвимостях
+
+GitHub → Security → Report a vulnerability (private) / приватно.
