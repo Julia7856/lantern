@@ -1,4 +1,3 @@
-
 # 🛡️ Lantern Threat Model / Модель угроз
 
 **Honest security for privacy-first communication /
@@ -64,6 +63,43 @@ fallback) / гибридный транспорт (mesh + fallback на анон
 **Attack / Атака:** malware steals private keys / вредонос крадёт приватные ключи.
 **Mitigation / Защита:** keys never leave device, encrypted at rest /
 ключи никогда не покидают устройство, зашифрованы в покое.
+
+### 7. Man-in-the-middle during key exchange / MITM при обмене ключами
+**Attack / Атака:** an active attacker intercepts the exchange and impersonates
+both peers / активный противник перехватывает обмен и выдаёт себя за оба пира.
+**Mitigation / Защита:** out-of-band verification (QR / safety numbers), key
+pinning on first use (TOFU) / внеполосная верификация (QR / коды безопасности),
+закрепление ключа при первом использовании (TOFU).
+
+### 8. Message replay / повтор сообщений
+**Attack / Атака:** adversary resends an old ciphertext / противник повторно
+отправляет старый шифртекст.
+**Mitigation / Защита:** monotonic counters + timestamps, unique nonce per
+message / монотонные счётчики + метки времени, уникальный nonce на каждое
+сообщение.
+
+### 9. Traffic analysis / анализ трафика
+**Attack / Атака:** sizes and timing of messages leak information / размеры и
+время сообщений раскрывают информацию.
+**Mitigation / Защита (planned / в планах):** padding to fixed blocks, uniform
+message format / паддинг до фиксированных блоков, единый формат сообщений.
+
+### 10. Session key compromise / компрометация сессионного ключа
+**Attack / Атака:** a session key leaks after use / сессионный ключ утекает после
+использования.
+**Mitigation / Защита (planned / в планах):** Double Ratchet — a new key per
+message, post-compromise security (Signal-style) / Double Ratchet — новый ключ
+на каждое сообщение, безопасность после компрометации (как в Signal).
+
+## Planned hardening / Планируемое усиление
+
+- 🔄 Double Ratchet (per-message keys) / ключ на каждое сообщение
+- 🔢 Safety numbers / QR verification / коды безопасности / QR-верификация
+- 📏 Padding + uniform message size / паддинг + единый размер сообщений
+- 👥 MLS for groups (RFC 9420) / MLS для групп
+- 🧊 Hardware-backed key storage (Keystore / StrongBox) / хранение ключей в
+  аппаратном хранилище
+- ⏳ Ephemeral messages (auto-delete) / эфемерные сообщения (автоудаление)
 
 ## What we do NOT claim / Что мы НЕ утверждаем
 
