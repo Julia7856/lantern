@@ -44,18 +44,21 @@ more powerful computers arrive / противник сохраняет шифр�
 computational advances / ML-KEM-768 обеспечивает forward secrecy против будущих
 вычислительных прорывов.
 
-### 4. Mandatory identity binding / обязательная привязка идентичности
-**Attack / Атака:** external requirements force phone/passport binding for
-messaging / внешние требования заставляют привязывать телефон/паспорт для
-мессенджинга.
-**Mitigation / Защита:** W3C DID (decentralized identity, no central authority) /
-W3C DID (децентрализованная идентичность, без центрального органа).
+### 4. Centralized identity risks / риски централизованной идентичности
+**Attack / Атака:** a centralized identity provider is a single point of
+failure — identifiers can be leaked, revoked, or misused /
+централизованный провайдер идентичности — единая точка отказа: идентификаторы
+могут утечь, быть отозваны или использованы не по назначению.
+**Mitigation / Защита:** W3C DID (self-sovereign identity — the user owns and
+controls their identifiers, no central registry needed) /
+W3C DID (самосуверенная идентичность — пользователь сам владеет и управляет
+своими идентификаторами, центральный реестр не нужен).
 
 ### 5. Mesh network isolation / изоляция mesh-сети
 **Attack / Атака:** network is partitioned, users become isolated /
 сеть разделяется, пользователи становятся изолированными.
-**Mitigation / Защита:** hybrid transport (mesh + TOR/I2P fallback) /
-гибридный транспорт (mesh + fallback на TOR/I2P).
+**Mitigation / Защита:** hybrid transport (mesh + anonymous overlay networks
+fallback) / гибридный транспорт (mesh + fallback на анонимные оверлей-сети).
 
 ### 6. Device compromise / компрометация устройства
 **Attack / Атака:** malware steals private keys / вредонос крадёт приватные ключи.
@@ -65,26 +68,4 @@ W3C DID (децентрализованная идентичность, без �
 ## What we do NOT claim / Что мы НЕ утверждаем
 
 - ❌ Lantern is NOT anonymous against a global passive observer with full
-  network visibility — metadata (who talks to whom, when) may leak /
-  Lantern НЕ анонимен против глобального пассивного наблюдателя с полным обзором
-  сети — метаданные (кто с кем, когда) могут утечь.
-- ❌ Lantern does NOT protect against endpoint compromise (if your phone is
-  compromised, messages are exposed) / Lantern НЕ защищает от компрометации
-  устройства (если телефон скомпрометирован, сообщения раскрыты).
-- ❌ Post-quantum cryptography (ML-KEM) is new — theoretical attacks may emerge /
-  постквантовая криптография (ML-KEM) новая — могут появиться теоретические атаки.
-- ❌ Mesh networks have limited range (~100m for Bluetooth, ~1km for LoRa) /
-  mesh-сети имеют ограниченный радиус (~100 м для Bluetooth, ~1 км для LoRa).
-
-## Responsible use / Ответственное использование
-
-Lantern is a privacy protection tool / Lantern — инструмент защиты приватности.
-Responsibility for use lies with the user / ответственность за использование — на
-пользователе.
-
-For people who value privacy / для людей, которые ценят приватность.
-White-hat only / только white-hat.
-
-## Reporting / Сообщение об уязвимостях
-
-GitHub → Security → Report a vulnerability (private) / приватно.
+  network visibility — metadata (who talks to
