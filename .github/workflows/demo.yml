@@ -21,3 +21,4 @@ jobs:
           python identity/did_key.py
           python crypto/ratchet.py
           python crypto/dh_ratchet.py
+          python crypto/session_ratchet.py
