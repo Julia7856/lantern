@@ -20,3 +20,4 @@ jobs:
           python crypto/hybrid_kem.py
           python identity/did_key.py
           python crypto/ratchet.py
+          python crypto/dh_ratchet.py
