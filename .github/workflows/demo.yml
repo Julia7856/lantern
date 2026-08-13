@@ -22,3 +22,4 @@ jobs:
           python crypto/ratchet.py
           python crypto/dh_ratchet.py
           python crypto/session_ratchet.py
+          python net/mesh.py
