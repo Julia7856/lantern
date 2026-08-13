@@ -19,3 +19,4 @@ jobs:
           python crypto/mlkem_exchange.py
           python crypto/hybrid_kem.py
           python identity/did_key.py
+          python crypto/ratchet.py
