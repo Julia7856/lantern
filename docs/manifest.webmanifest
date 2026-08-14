@@ -1,0 +1,13 @@
+{
+  "name": "Lantern — private messenger",
+  "short_name": "Lantern",
+  "description": "Post-quantum private P2P communicator / приватный постквантовый коммуникатор",
+  "start_url": "/lantern/",
+  "scope": "/lantern/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
