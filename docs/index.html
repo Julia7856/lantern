@@ -45,8 +45,16 @@ async function main() {
       say("⏳ fetch " + f);
       const code = await (await fetch(BASE + f)).text();
       say("⏳ write " + f);
-      if (f.includes("/")) pyodide.FS.mkdirTree(f.split("/")[0]);
-      pyodide.FS.writeFile(f, code);
+      pyodide.globals.set("fpath", f);
+      pyodide.globals.set("fcode", code);
+      await pyodide.runPythonAsync(`
+import os
+d = os.path.dirname(fpath)
+if d:
+    os.makedirs(d, exist_ok=True)
+with open(fpath, "w", encoding="utf-8") as fh:
+    fh.write(fcode)
+`);
     }
     say("✅ Ready / Готово");
     const btn = document.getElementById("run");
