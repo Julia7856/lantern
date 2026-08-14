@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lantern 🏮</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.6/full/pyodide.js"></script>
+<style>
+  body { background:#0d1117; color:#e6edf3; font-family:monospace; margin:0; padding:16px; }
+  h1 { font-size:20px; }
+  #log { white-space:pre-wrap; background:#161b22; padding:12px; border-radius:8px; min-height:200px; }
+  button { background:#238636; color:#fff; border:0; padding:10px 16px; border-radius:6px; font-size:16px; }
+</style>
+</head>
+<body>
+<h1>🏮 Lantern — live demo</h1>
+<p id="status">Loading Python (WASM)… / Загружаю Python (WASM)…</p>
+<button id="run" disabled>▶ Run session / Запустить сессию</button>
+<div id="log"></div>
+<script>
+const BASE = "https://raw.githubusercontent.com/Julia7856/lantern/main/";
+const FILES = ["session.py", "crypto/ratchet.py", "crypto/session_ratchet.py",
+               "crypto/mlkem_exchange.py", "crypto/hybrid_kem.py", "identity/did_key.py"];
+
+async function main() {
+  const pyodide = await loadPyodide();
+  document.getElementById("status").textContent = "Installing cryptography… / Ставлю cryptography…";
+  await pyodide.loadPackage("cryptography");
+  await pyodide.loadPackage("micropip");
+  document.getElementById("status").textContent = "Installing kyber-py… / Ставлю kyber-py…";
+  await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
+
+  for (const f of FILES) {
+    const code = await (await fetch(BASE + f)).text();
+    if (f.includes("/")) pyodide.FS.mkdirTree(f.split("/")[0]);
+    pyodide.FS.writeFile(f, code);
+  }
+
+  document.getElementById("status").textContent = "Ready ✅ / Готово ✅";
+  const btn = document.getElementById("run");
+  btn.disabled = false;
+  btn.onclick = async () => {
+    const log = document.getElementById("log");
+    log.textContent = "";
+    pyodide.setStdout({ batched: (t) => { log.textContent += t + "\n"; } });
+    try {
+      await pyodide.runPythonAsync(
+        `import sys, runpy; sys.path.insert(0, "."); runpy.run_path("session.py", run_name="__main__")`
+      );
+    } catch (e) {
+      log.textContent += "ERROR: " + e;
+    }
+  };
+}
+main();
+</script>
+</body>
+</html>
