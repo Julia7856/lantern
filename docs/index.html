@@ -21,36 +21,44 @@
 const BASE = "https://raw.githubusercontent.com/Julia7856/lantern/main/";
 const FILES = ["session.py", "crypto/ratchet.py", "crypto/session_ratchet.py",
                "crypto/mlkem_exchange.py", "crypto/hybrid_kem.py", "identity/did_key.py"];
+const status = document.getElementById("status");
 
 async function main() {
-  const pyodide = await loadPyodide();
-  document.getElementById("status").textContent = "Installing cryptography… / Ставлю cryptography…";
-  await pyodide.loadPackage("cryptography");
-  await pyodide.loadPackage("micropip");
-  document.getElementById("status").textContent = "Installing kyber-py… / Ставлю kyber-py…";
-  await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
-
-  for (const f of FILES) {
-    const code = await (await fetch(BASE + f)).text();
-    if (f.includes("/")) pyodide.FS.mkdirTree(f.split("/")[0]);
-    pyodide.FS.writeFile(f, code);
-  }
-
-  document.getElementById("status").textContent = "Ready ✅ / Готово ✅";
-  const btn = document.getElementById("run");
-  btn.disabled = false;
-  btn.onclick = async () => {
-    const log = document.getElementById("log");
-    log.textContent = "";
-    pyodide.setStdout({ batched: (t) => { log.textContent += t + "\n"; } });
-    try {
-      await pyodide.runPythonAsync(
-        `import sys, runpy; sys.path.insert(0, "."); runpy.run_path("session.py", run_name="__main__")`
-      );
-    } catch (e) {
-      log.textContent += "ERROR: " + e;
+  try {
+    const pyodide = await loadPyodide();
+    window.pyodide = pyodide;
+    status.textContent = "Installing cryptography… / Ставлю cryptography…";
+    await pyodide.loadPackage("cryptography");
+    status.textContent = "Loading micropip… / Грузлю micropip…";
+    await pyodide.loadPackage("micropip");
+    status.textContent = "Installing kyber-py… / Ставлю kyber-py…";
+    await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
+    for (const f of FILES) {
+      status.textContent = "Fetching " + f + "… / Качаю " + f + "…";
+      const code = await (await fetch(BASE + f)).text();
+      if (f.includes("/")) pyodide.FS.mkdirTree(f.split("/")[0]);
+      pyodide.FS.writeFile(f, code);
     }
-  };
+    status.textContent = "Ready ✅ / Готово ✅";
+    const btn = document.getElementById("run");
+    btn.disabled = false;
+    btn.onclick = run;
+  } catch (e) {
+    status.textContent = "❌ ERROR: " + e;
+  }
+}
+
+async function run() {
+  const log = document.getElementById("log");
+  log.textContent = "";
+  window.pyodide.setStdout({ batched: (t) => { log.textContent += t + "\n"; } });
+  try {
+    await window.pyodide.runPythonAsync(
+      `import sys, runpy; sys.path.insert(0, "."); runpy.run_path("session.py", run_name="__main__")`
+    );
+  } catch (e) {
+    log.textContent += "❌ ERROR: " + e;
+  }
 }
 main();
 </script>
