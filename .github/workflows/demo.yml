@@ -24,3 +24,4 @@ jobs:
           python crypto/session_ratchet.py
           python net/mesh.py
           python crypto/noise_handshake.py
+          python net/onion.py
