@@ -144,7 +144,22 @@ alone can solve.
 не решить.
 
 ---
+## 🌐 Web Demo (Pyodide) — Threat Audit / Аудит угроз веб-демо
 
+Added in UI v0.7: live demo + live chat in browser. New attack surface below.
+Добавлено в UI v0.7: живое демо + живой чат в браузере. Новая поверхность атаки.
+
+| # | Threat / Угроза | Status / Статус | Countermeasure / Контрмера |
+|---|------------------|------------------|-----------------------------|
+| W1 | Pyodide CDN compromise (supply chain) / Компрометация CDN Pyodide | ⚠️ accepted / принятый риск | demo only; production = local build / демо; продакшн = локальная сборка |
+| W2 | Keys in browser memory / Ключи в памяти браузера | ⚠️ accepted / принятый риск | demo ≠ production; device compromise = keys leak / демо ≠ продакшн |
+| W3 | MITM of fetched modules / MITM загрузки модулей | 🟡 partial / частично | HTTPS; code signing not implemented yet / подписи кода пока нет |
+| W4 | Malicious browser extensions / Вредоносные расширения | ⚠️ accepted / принятый риск | same as W2 / то же, что W2 |
+
+**Philosophy / Философия:** web demo is a *visualization of the protocol*, not production. Production Lantern = local execution.
+Веб-демо — *визуализация протокола*, а не продакшн. Продакшн = локальное исполнение.
+
+---
 ## Modules behind every ✅ / Модули за каждым ✅
 
 | Layer / Слой | Module |
