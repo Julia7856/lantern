@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lantern 🏮 — Live Chat</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.6/full/pyodide.js"></script>
 <style>
   body { background:#0d1117; color:#e6edf3; font-family:monospace; margin:0; padding:16px; }
@@ -150,4 +153,4 @@ json.dumps({"wire": env["ct"].hex()[:40], "key": mk_s.hex()[:16],
 main();
 </script>
 </body>
-  </html>
+</html>
