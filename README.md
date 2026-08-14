@@ -29,7 +29,7 @@ no central server.
 - `net/mesh.py` — store-and-forward mesh, untrusted relays / mesh-транспорт
 - `net/onion.py` — onion routing, metadata protection / onion-маршрутизация
 - `session.py` — E2E session v3 demo / демо сессии v3
-- `docs/index.html` — web demo: Pyodide + live chat / веб-демо
+- `docs/index.html` — web demo: Pyodide + live chat + PWA / веб-демо
 - `THREAT_MODEL.md` — honest threat model / честная модель угроз
 
 ## 🚧 Status / Статус
@@ -45,8 +45,8 @@ Early prototype / Ранний прототип.
 - [x] Double Ratchet (per-message keys + healing / ключ на сообщение + лечение)
 - [x] P2P transport prototype / прототип P2P-транспорта (mesh + onion)
 - [x] Web UI + live chat in browser / веб-UI + живой чат (Pyodide)
+- [x] Mobile UI (PWA) — app on home screen / приложение на домашнем экране
 - [ ] Real network P2P / настоящий сетевой P2P
-- [ ] Mobile UI / мобильный UI
 
 ## 🛡️ Threat model / Модель угроз
 
@@ -65,8 +65,8 @@ White-hat only / только white-hat.
 
 **Live / Вживую:** https://julia7856.github.io/lantern/
 
-Demo runs the real stack in your browser (Pyodide): hybrid root ML-KEM + X25519, Double Ratchet, Ed25519 signatures, live chat.
-Демо гоняет настоящий стек в браузере (Pyodide): гибридный корень, Double Ratchet, подписи, живой чат.
+Demo runs the real stack in your browser (Pyodide): hybrid root ML-KEM + X25519, Double Ratchet, Ed25519 signatures, live chat. Installable as PWA / ставится как PWA.
+Демо гоняет настоящий стек в браузере (Pyodide): гибридный корень, Double Ratchet, подписи, живой чат. Устанавливается как приложение.
 
 ⚠️ **Demo, not production / Демо, а не продакшн.** Keys live in browser memory / ключи живут в памяти браузера. See THREAT_MODEL.md (W1–W4).
 
