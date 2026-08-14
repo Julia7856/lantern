@@ -8,28 +8,31 @@
 <style>
   body { background:#0d1117; color:#e6edf3; font-family:monospace; margin:0; padding:16px; }
   h1 { font-size:20px; }
-  #chat { background:#161b22; padding:12px; border-radius:8px; min-height:300px; max-height:400px; overflow-y:auto; margin-bottom:12px; }
-  .alice { color:#79c0ff; }
-  .bob { color:#ffa657; }
+  #chat { background:#161b22; padding:12px; border-radius:8px; min-height:280px; max-height:45vh; overflow-y:auto; margin-bottom:12px; }
+  .alice { color:#79c0ff; margin-top:6px; }
+  .bob { color:#ffa657; margin-top:6px; }
   .wire { color:#8b949e; font-size:12px; }
-  input { width:calc(100% - 90px); padding:8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; }
+  #row { display:flex; gap:8px; }
+  #msg { flex:1; padding:10px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:15px; }
   button { background:#238636; color:#fff; border:0; padding:10px 16px; border-radius:6px; font-size:14px; }
-  #status { color:#8b949e; font-size:14px; }
+  #status { color:#8b949e; font-size:14px; margin-bottom:8px; }
 </style>
 </head>
 <body>
 <h1>🏮 Lantern — Live Chat</h1>
 <div id="status">Loading… / Загрузка…</div>
 <div id="chat"></div>
+<div id="row">
 <input id="msg" placeholder="Write as Alice / Пиши за Алису…" disabled>
-<button id="send" disabled>Send / Отправить</button>
+<button id="send" disabled>Send ➤</button>
+</div>
 <script>
 const BASE = "https://raw.githubusercontent.com/Julia7856/lantern/main/";
 const FILES = ["session.py", "crypto/ratchet.py", "crypto/session_ratchet.py",
                "crypto/mlkem_exchange.py", "crypto/hybrid_kem.py", "identity/did_key.py"];
 const status = document.getElementById("status");
 const chat = document.getElementById("chat");
-
+function say(t) { status.textContent = t; }
 function addLine(cls, text) {
   const div = document.createElement("div");
   div.className = cls;
@@ -40,22 +43,22 @@ function addLine(cls, text) {
 
 async function main() {
   try {
-    status.textContent = "⏳ loadPyodide";
+    say("⏳ loadPyodide");
     const pyodide = await loadPyodide();
     window.pyodide = pyodide;
-    status.textContent = "⏳ load cryptography";
+    say("⏳ load cryptography");
     await pyodide.loadPackage("cryptography");
-    status.textContent = "⏳ load micropip";
+    say("⏳ load micropip");
     await pyodide.loadPackage("micropip");
-    status.textContent = "⏳ install kyber-py";
+    say("⏳ install kyber-py");
     try {
       await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
     } catch (e) {
-      status.textContent = "⏳ retry kyber-py==1.0.1";
+      say("⏳ retry kyber-py==1.0.1");
       await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py==1.0.1")`);
     }
     for (const f of FILES) {
-      status.textContent = "⏳ fetch " + f;
+      say("⏳ fetch " + f);
       const code = await (await fetch(BASE + f)).text();
       pyodide.globals.set("fpath", f);
       pyodide.globals.set("fcode", code);
@@ -68,15 +71,25 @@ with open(fpath, "w", encoding="utf-8") as fh:
     fh.write(fcode)
 `);
     }
-    status.textContent = "⏳ init sessions";
+    say("⏳ init ratchet session");
     await pyodide.runPythonAsync(`
-import sys
+import sys, json
 sys.path.insert(0, ".")
-from session import make_session
-alice = make_session("alice_seed")
-bob = make_session("bob_seed")
+from session import DoubleRatchet, create_did, hybrid_session_key, encrypt, decrypt
+alice_id = create_did()
+bob_id = create_did()
+root = hybrid_session_key()
+alice = DoubleRatchet("Alice")
+bob = DoubleRatchet("Bob")
+alice.root = root
+bob.root = root
+alice.init_as_sender(bob.public())
+bob.init_as_receiver(alice.public())
+a_pub = alice_id["private_key"].public_key()
+b_pub = bob_id["private_key"].public_key()
+msg_num = 0
 `);
-    status.textContent = "✅ Ready / Готово";
+    say("✅ Ready / Готово — пиши за Алису!");
     const msg = document.getElementById("msg");
     const send = document.getElementById("send");
     msg.disabled = false;
@@ -84,46 +97,57 @@ bob = make_session("bob_seed")
     send.onclick = sendMessage;
     msg.onkeypress = (e) => { if (e.key === "Enter") sendMessage(); };
   } catch (e) {
-    status.textContent = "❌ " + (e.message || JSON.stringify(e));
+    say("❌ " + (e.message || JSON.stringify(e)));
   }
 }
 
 async function sendMessage() {
-  const msg = document.getElementById("msg");
-  const text = msg.value.trim();
+  const input = document.getElementById("msg");
+  const text = input.value.trim();
   if (!text) return;
-  msg.value = "";
-  addLine("alice", "📤 Alice: " + text);
-  
-  const pyodide = window.pyodide;
-  pyodide.globals.set("plaintext", text);
-  
+  input.value = "";
+  const py = window.pyodide;
+  py.globals.set("user_text", text);
   try {
-    await pyodide.runPythonAsync(`
-from session import alice, bob
-ct, sig = alice.encrypt(plaintext.encode("utf-8"))
-`);
-    const ct = pyodide.globals.get("ct");
-    addLine("wire", "🔒 Wire: " + ct.toJs().slice(0, 32) + "...");
-    
-    await pyodide.runPythonAsync(`
-pt = bob.decrypt(ct, sig)
-`);
-    const pt = pyodide.globals.get("pt");
-    addLine("bob", "📥 Bob: " + pt.toJs().decode("utf-8"));
-    
-    addLine("wire", "⚙️ Keys rotated / Ключи ротированы");
-    
-    setTimeout(() => {
-      addLine("bob", "📤 Bob: " + ["Got it!", "Understood", "👍", "Roger"][Math.floor(Math.random() * 4)]);
-      addLine("wire", "⚙️ Keys rotated / Ключи ротированы");
-    }, 500);
+    addLine("alice", "📤 Alice: " + text);
+    const r1 = JSON.parse(await py.runPythonAsync(`
+import json
+if msg_num > 0:
+    alice.dh_step(bob.public(), "send")
+    bob.dh_step(alice.public(), "recv")
+mk_s = alice.send_key()
+env = encrypt(user_text.encode("utf-8"), mk_s, alice_id)
+mk_r = bob.recv_key()
+plain = decrypt(env, mk_r, a_pub)
+msg_num += 1
+json.dumps({"wire": env["ct"].hex()[:40], "key": mk_s.hex()[:16],
+            "match": mk_s == mk_r, "plain": plain.decode("utf-8")})
+`));
+    addLine("wire", "🔒 wire: " + r1.wire + "… | 🔑 " + r1.key + "… | match: " + r1.match);
+    addLine("bob", "📥 Bob расшифровал / decrypted: " + r1.plain + " ✅");
+
+    const replies = ["Got it! / Принял!", "Loud and clear 📡 / Слышу отлично!", "👍", "Keys rotating 🔐 / Ключи крутятся!"];
+    const reply = replies[Math.floor(Math.random() * replies.length)];
+    py.globals.set("reply_text", reply);
+    const r2 = JSON.parse(await py.runPythonAsync(`
+import json
+bob.dh_step(alice.public(), "send")
+alice.dh_step(bob.public(), "recv")
+mk_s = bob.send_key()
+env = encrypt(reply_text.encode("utf-8"), mk_s, bob_id)
+mk_r = alice.recv_key()
+plain = decrypt(env, mk_r, b_pub)
+json.dumps({"wire": env["ct"].hex()[:40], "key": mk_s.hex()[:16],
+            "match": mk_s == mk_r, "plain": plain.decode("utf-8")})
+`));
+    addLine("bob", "📤 Bob: " + reply);
+    addLine("wire", "🔒 wire: " + r2.wire + "… | 🔑 " + r2.key + "… | match: " + r2.match);
+    addLine("alice", "📥 Alice расшифровала / decrypted: " + r2.plain + " ✅");
   } catch (e) {
-    addLine("wire", "❌ Error: " + (e.message || JSON.stringify(e)));
+    addLine("wire", "❌ " + (e.message || JSON.stringify(e)));
   }
 }
-
 main();
 </script>
 </body>
-</html>
+  </html>
