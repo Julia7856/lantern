@@ -26,10 +26,12 @@ no central server.
 - `crypto/session_ratchet.py` — Double Ratchet session / Double Ratchet
 - `crypto/noise_handshake.py` — Noise XX handshake / рукопожатие Noise XX
 - `identity/did_key.py` — did:key identity (Ed25519) / DID-идентичность
-- `net/mesh.py` — store-and-forward mesh, untrusted relays / mesh-транспорт
+- `net/mesh.py` — store-and-forward mesh, untrusted relays / P2P mesh-транспорт
 - `net/onion.py` — onion routing, metadata protection / onion-маршрутизация
 - `session.py` — E2E session v3 demo / демо сессии v3
-- `docs/index.html` — web demo: Pyodide + live chat + PWA / веб-демо
+- `docs/index.html` — web demo: Pyodide + live chat / веб-демо + живой чат
+- `docs/manifest.webmanifest` — PWA manifest: install as app / манифест PWA
+- `docs/icon.svg` — app icon 🏮 / иконка приложения
 - `THREAT_MODEL.md` — honest threat model / честная модель угроз
 
 ## 🚧 Status / Статус
