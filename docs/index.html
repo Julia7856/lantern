@@ -22,6 +22,12 @@ const BASE = "https://raw.githubusercontent.com/Julia7856/lantern/main/";
 const FILES = ["session.py", "crypto/ratchet.py", "crypto/session_ratchet.py",
                "crypto/mlkem_exchange.py", "crypto/hybrid_kem.py", "identity/did_key.py"];
 const status = document.getElementById("status");
+const log = document.getElementById("log");
+
+function showErr(e) {
+  status.textContent = "❌ ERROR: " + (e.message || JSON.stringify(e));
+  log.textContent = e.stack || String(e);
+}
 
 async function main() {
   try {
@@ -32,7 +38,12 @@ async function main() {
     status.textContent = "Loading micropip… / Грузлю micropip…";
     await pyodide.loadPackage("micropip");
     status.textContent = "Installing kyber-py… / Ставлю kyber-py…";
-    await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
+    try {
+      await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py")`);
+    } catch (e1) {
+      status.textContent = "Retrying kyber-py 1.0.1… / Пробую kyber-py 1.0.1…";
+      await pyodide.runPythonAsync(`import micropip; await micropip.install("kyber-py==1.0.1")`);
+    }
     for (const f of FILES) {
       status.textContent = "Fetching " + f + "… / Качаю " + f + "…";
       const code = await (await fetch(BASE + f)).text();
@@ -44,12 +55,11 @@ async function main() {
     btn.disabled = false;
     btn.onclick = run;
   } catch (e) {
-    status.textContent = "❌ ERROR: " + e;
+    showErr(e);
   }
 }
 
 async function run() {
-  const log = document.getElementById("log");
   log.textContent = "";
   window.pyodide.setStdout({ batched: (t) => { log.textContent += t + "\n"; } });
   try {
@@ -57,7 +67,7 @@ async function run() {
       `import sys, runpy; sys.path.insert(0, "."); runpy.run_path("session.py", run_name="__main__")`
     );
   } catch (e) {
-    log.textContent += "❌ ERROR: " + e;
+    showErr(e);
   }
 }
 main();
