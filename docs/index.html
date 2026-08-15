@@ -52,6 +52,13 @@ function addLine(cls, text) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
+async function fetchCode(f) {
+  const res = await fetch(BASE + f);
+  if (!res.ok) {
+    throw new Error("rate limit / лимит GitHub — подожди минуту / wait a minute");
+  }
+  return await res.text();
+}
 
 async function main() {
   try {
@@ -71,10 +78,13 @@ async function main() {
     }
     say("⏳ fetch signatures");
     let sigdata = null;
-    try { sigdata = await (await fetch(BASE + "docs/signatures.json")).json(); } catch (e) {}
+    try {
+      const sres = await fetch(BASE + "docs/signatures.json");
+      if (sres.ok) sigdata = await sres.json();
+    } catch (e) {}
     for (const f of FILES) {
       say("⏳ fetch " + f);
-      const code = await (await fetch(BASE + f)).text();
+      const code = await fetchCode(f);
       if (sigdata && sigdata.pub && sigdata.sig && sigdata.sig[f]) {
         pyodide.globals.set("fcode2", code);
         pyodide.globals.set("fsig", sigdata.sig[f]);
@@ -146,7 +156,7 @@ async function signModules() {
   let sigs = {}; let pub = "";
   for (const f of FILES) {
     say("🔏 signing " + f);
-    const code = await (await fetch(BASE + f)).text();
+    const code = await fetchCode(f);
     py.globals.set("fcode2", code);
     const res = await py.runPythonAsync(`
 import hashlib, json
