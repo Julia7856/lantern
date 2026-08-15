@@ -16,19 +16,20 @@
   .bob { color:#ffa657; margin-top:6px; }
   .wire { color:#8b949e; font-size:12px; }
   #row { display:flex; gap:8px; }
-  #msg { flex:1; padding:10px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:15px; }
+  #tools { display:flex; gap:8px; margin-bottom:8px; }
+  #msg, #word { flex:1; padding:10px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:15px; }
   button { background:#238636; color:#fff; border:0; padding:10px 16px; border-radius:6px; font-size:14px; }
-  #tools button { background:#6e7681; margin-right:8px; margin-bottom:8px; }
   #status { color:#8b949e; font-size:14px; margin-bottom:8px; }
-  #out { display:none; background:#161b22; padding:8px; border-radius:8px; font-size:11px; max-height:30vh; overflow:auto; white-space:pre-wrap; word-break:break-all; }
+  #out { display:none; background:#161b22; padding:8px; border-radius:8px; font-size:11px; max-height:20vh; overflow:auto; white-space:pre-wrap; word-break:break-all; }
 </style>
 </head>
 <body>
 <h1>🏮 Lantern — Live Chat</h1>
 <div id="status">Loading… / Загрузка…</div>
 <div id="tools">
-<button id="setup" disabled>🔐 Author setup</button>
-<button id="sign" disabled>🔏 Sign modules</button>
+<input id="word" placeholder="Secret word / секретное слово…">
+<button id="sign" disabled>🔏 Sign</button>
+<button id="copy" disabled>📋 Copy</button>
 </div>
 <pre id="out"></pre>
 <div id="chat"></div>
@@ -120,54 +121,38 @@ a_pub = alice_id["private_key"].public_key()
 b_pub = bob_id["private_key"].public_key()
 msg_num = 0
 `);
-    say("✅ Ready / Готово — пиши за Алису!");
+    say("✅ Ready / Готово!");
     const msg = document.getElementById("msg");
     const send = document.getElementById("send");
     msg.disabled = false;
     send.disabled = false;
-    document.getElementById("setup").disabled = false;
     document.getElementById("sign").disabled = false;
     send.onclick = sendMessage;
     msg.onkeypress = (e) => { if (e.key === "Enter") sendMessage(); };
-    document.getElementById("setup").onclick = authorSetup;
     document.getElementById("sign").onclick = signModules;
+    document.getElementById("copy").onclick = () => {
+      navigator.clipboard.writeText(window.lastSig).then(() => say("✅ JSON в буфере! / JSON copied!"));
+    };
   } catch (e) {
     say("❌ " + (e.message || JSON.stringify(e)));
   }
 }
 
-async function authorSetup() {
-  const py = window.pyodide;
-  const res = await py.runPythonAsync(`
-import os, json
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-seed = os.urandom(32)
-sk = Ed25519PrivateKey.from_private_bytes(seed)
-pub = sk.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
-json.dumps({"priv": seed.hex(), "pub": pub})
-`);
-  const r = JSON.parse(res);
-  out.style.display = "block";
-  out.textContent = "🔐 PRIV seed — СОХРАНИ В ЗАМЕТКИ (никому!):\n" + r.priv +
-    "\n\n📄 Создай файл docs/signatures.json с содержимым:\n" +
-    JSON.stringify({pub: r.pub, sig: {}}, null, 2);
-}
-
 async function signModules() {
-  const priv = prompt("Вставь PRIV seed из заметок:");
-  if (!priv) return;
+  const word = document.getElementById("word").value;
+  if (!word.trim()) { say("✏️ Впиши секретное слово! / Enter secret word!"); return; }
   const py = window.pyodide;
-  py.globals.set("priv_hex", priv.trim());
+  py.globals.set("word", word);
   let sigs = {}; let pub = "";
   for (const f of FILES) {
+    say("🔏 signing " + f);
     const code = await (await fetch(BASE + f)).text();
     py.globals.set("fcode2", code);
     const res = await py.runPythonAsync(`
-import json
+import hashlib, json
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-seed = bytes.fromhex(priv_hex)
+seed = hashlib.sha256(word.encode()).digest()
 sk = Ed25519PrivateKey.from_private_bytes(seed)
 pub = sk.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
 sig = sk.sign(fcode2.encode()).hex()
@@ -176,9 +161,11 @@ json.dumps({"pub": pub, "sig": sig})
     const r = JSON.parse(res);
     pub = r.pub; sigs[f] = r.sig;
   }
+  window.lastSig = JSON.stringify({pub: pub, sig: sigs}, null, 2);
   out.style.display = "block";
-  out.textContent = "📄 Замени docs/signatures.json на это:\n" +
-    JSON.stringify({pub: pub, sig: sigs}, null, 2);
+  out.textContent = window.lastSig;
+  document.getElementById("copy").disabled = false;
+  say("✅ Подписано! Жми 📋 Copy / Signed! Press Copy");
 }
 
 async function sendMessage() {
