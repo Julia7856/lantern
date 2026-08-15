@@ -1,0 +1,5 @@
+Создай файл docs/signatures.json с содержимым:
+{
+  "pub": "e2479c808459f98343383f177426a155eda4921fa3442f0f1a0921cbabcb53b7",
+  "sig": {}
+}
