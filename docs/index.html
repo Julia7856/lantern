@@ -10,7 +10,8 @@
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.6/full/pyodide.js"></script>
 <style>
   body { background:#0d1117; color:#e6edf3; font-family:monospace; margin:0; padding:16px; }
-  h1 { font-size:20px; }
+  h1 { font-size:20px; margin-bottom:4px; }
+  .hint { color:#8b949e; font-size:13px; margin-bottom:12px; }
   #chat { background:#161b22; padding:12px; border-radius:8px; min-height:200px; max-height:35vh; overflow-y:auto; margin-bottom:12px; }
   .alice { color:#79c0ff; margin-top:6px; }
   .bob { color:#ffa657; margin-top:6px; }
@@ -23,6 +24,8 @@
 </head>
 <body>
 <h1>🏮 Lantern — Live Chat</h1>
+<div class="hint">Hybrid ML-KEM-768 + X25519 • Double Ratchet • AES-256-GCM<br>
+Гибридный корень • Double Ratchet • AES-256-GCM</div>
 <div id="status">Loading… / Загрузка…</div>
 <div id="chat"></div>
 <div id="row">
