@@ -6,15 +6,14 @@
 
 ## 🎯 What is this? / Что это?
 
-Lantern — децентрализованный коммуникатор: без телефона, без паспорта,
-без центрального сервера / a decentralized communicator: no phone, no passport,
-no central server.
+Lantern — децентрализованный коммуникатор: без телефона, без паспорта, без центрального сервера / a decentralized communicator: no phone, no passport, no central server.
 
 - 🧬 **Post-quantum / Постквантовая криптография**: ML-KEM-768 (NIST FIPS 203)
+- 🔒 **E2E by default / E2E по умолчанию**: hybrid ML-KEM + X25519 → AES-256-GCM
+- ⏳ **HNDL-resistant / Устойчив к HNDL**: гибридный KEM защищает даже трафик, записанный сегодня / hybrid KEM protects even traffic recorded today
 - 🕸️ **Mesh / Mesh-сеть**: Bluetooth / Wi-Fi Direct / LoRa + anonymous overlay fallback
 - 🪪 **DID / Децентрализованная идентичность**: W3C did:key, без личных данных
 - 📴 **Offline-first / Офлайн-первичность**: работает без интернета
-- 🔒 **E2E by default / E2E по умолчанию**: hybrid ML-KEM + X25519 → AES-256-GCM
 
 ## 📁 Structure / Структура
 
@@ -54,15 +53,6 @@ Early prototype / Ранний прототип.
 
 See / см. [THREAT_MODEL.md](THREAT_MODEL.md)
 
-## ⚖️ Ethics / Этика
-
-Lantern is a privacy protection tool / Lantern — инструмент защиты приватности.
-Responsibility for use lies with the user / ответственность за использование — на
-пользователе.
-
-For people who value privacy / для людей, которые ценят приватность.
-White-hat only / только white-hat.
-
 ## 🌐 Web Demo / Веб-демо
 
 **Live / Вживую:** https://julia7856.github.io/lantern/
@@ -71,6 +61,24 @@ Demo runs the real stack in your browser (Pyodide): hybrid root ML-KEM + X25519,
 Демо гоняет настоящий стек в браузере (Pyodide): гибридный корень, Double Ratchet, подписи, живой чат. Устанавливается как приложение.
 
 ⚠️ **Demo, not production / Демо, а не продакшн.** Keys live in browser memory / ключи живут в памяти браузера. See THREAT_MODEL.md (W1–W4).
+
+## ⚖️ Ethics / Этика
+
+Lantern is a privacy protection tool / Lantern — инструмент защиты приватности.
+Responsibility for use lies with the user / ответственность за использование — на пользователе.
+
+For people who value privacy / для людей, которые ценят приватность.
+White-hat only / только white-hat.
+
+## License / Лицензия
+
+© 2026 Julia7856. Non-commercial use is free. Commercial use requires permission — open an Issue.
+© 2026 Julia7856. Некоммерческое использование бесплатно. Коммерческое использование — по согласованию (открой Issue).
+
+## Author / Автор
+
+Julia7856 — author of **Lantern** (post-quantum P2P communicator), **Grail** (local data guardian) and **CryptoAudit** (static crypto auditor with PQC checks).
+Автор **Lantern** (постквантовый P2P-коммуникатор), **Grail** (локальный защитник данных) и **CryptoAudit** (статический аудитор крипто-кода с PQC-проверками).
 
 ---
 
