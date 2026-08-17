@@ -82,7 +82,7 @@ no single point of failure.
 store-and-forward через недоверенные реле. Нет CA, нет единой точки
 отказа.
 
-## 9. Metadata: who talks to whom and when / Метаданные: кто с кем и когда
+## 9. Metadata: who talks with whom and when / Метаданные: кто с кем и когда
 
 ✅ **Closed.** Onion routing (`net/onion.py`) wraps each hop; every
 relay learns only the next hop, never both endpoints. Fixed-size
@@ -124,6 +124,17 @@ flow, no key rotation, no backup. Losing the key = losing the identity.
 
 ⚠️ **Частично.** Отпечатки Noise XX можно сверить вне канала (QR, голос),
 но в Lantern пока нет ни UI, ни самого флоу.
+
+## 14. Traffic analysis: timing and volume / Трафик-анализ: тайминг и объём
+
+⚠️ **Partial.** Onion routing and fixed-size padding hide the route and
+message length, but not *when* and *how much* you send. Correlated
+observers can still infer activity patterns. No cover traffic yet.
+
+⚠️ **Частично.** Onion-маршрутизация и паддинг скрывают маршрут и длину
+сообщения, но не *когда* и *сколько* ты отправляешь. Коррелированные
+наблюдатели всё ещё могут вывести паттерны активности. Покрывного
+трафика пока нет.
 
 ---
 
