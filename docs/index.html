@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.6/full/pyodide.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
   body { background:#0d1117; color:#e6edf3; font-family:monospace; margin:0; padding:16px; }
   h1 { font-size:20px; margin-bottom:4px; }
@@ -18,8 +19,15 @@
   .wire { color:#8b949e; font-size:12px; }
   #row { display:flex; gap:8px; }
   #msg { flex:1; padding:10px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:15px; }
-  button { background:#238636; color:#fff; border:0; padding:10px 16px; border-radius:6px; font-size:14px; }
+  button { background:#238636; color:#fff; border:0; padding:10px 16px; border-radius:6px; font-size:14px; cursor:pointer; }
+  button:disabled { background:#30363d; cursor:not-allowed; }
   #status { color:#8b949e; font-size:14px; margin-bottom:8px; }
+  #roomBtn { background:#1f6feb; }
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000; }
+  .modal-content { background:#161b22; padding:24px; border-radius:8px; text-align:center; }
+  .modal-content input { padding:10px; font-size:18px; width:120px; text-align:center; text-transform:uppercase; margin:12px 0; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; }
+  .modal-content button { margin:8px; }
+  #roomStatus { color:#7ee787; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -31,13 +39,36 @@
 <div id="row">
 <input id="msg" placeholder="Write as Alice / Пиши за Алису…" disabled>
 <button id="send" disabled>Send ➤</button>
+<button id="roomBtn">🌐 Комната</button>
 </div>
+
+<div id="roomModal" class="modal">
+  <div class="modal-content">
+    <h2>🌐 Сетевая комната / Network Room</h2>
+    <p>Введи код комнаты (4 буквы) / Enter room code (4 letters):</p>
+    <input id="roomCode" maxlength="4" placeholder="ALBA">
+    <br>
+    <button id="joinRoom">Connect 🔗</button>
+    <button id="cancelRoom" style="background:#6e7681;">Cancel ❌</button>
+  </div>
+</div>
+
 <script>
 const BASE = "https://raw.githubusercontent.com/Julia7856/lantern/main/";
 const FILES = ["session.py", "crypto/ratchet.py", "crypto/session_ratchet.py",
                "crypto/mlkem_exchange.py", "crypto/hybrid_kem.py", "identity/did_key.py"];
 const status = document.getElementById("status");
 const chat = document.getElementById("chat");
+const roomBtn = document.getElementById("roomBtn");
+const roomModal = document.getElementById("roomModal");
+const roomCodeInput = document.getElementById("roomCode");
+const joinRoomBtn = document.getElementById("joinRoom");
+const cancelRoomBtn = document.getElementById("cancelRoom");
+
+let mqttClient = null;
+let currentRoom = null;
+let myRole = "alice";
+
 function say(t) { status.textContent = t; }
 function addLine(cls, text) {
   const div = document.createElement("div");
@@ -47,11 +78,77 @@ function addLine(cls, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
+roomBtn.onclick = () => {
+  roomModal.style.display = "flex";
+  roomCodeInput.focus();
+};
+cancelRoomBtn.onclick = () => {
+  roomModal.style.display = "none";
+  roomCodeInput.value = "";
+};
+joinRoomBtn.onclick = () => {
+  const code = roomCodeInput.value.trim().toUpperCase();
+  if (code.length !== 4 || !/^[A-Z]{4}$/.test(code)) {
+    alert("Код должен быть 4 буквы / Code must be 4 letters (A-Z)");
+    return;
+  }
+  joinRoom(code);
+  roomModal.style.display = "none";
+};
+
+function joinRoom(code) {
+  currentRoom = code;
+  myRole = Math.random() < 0.5 ? "alice" : "bob";
+  addLine("wire", `🌐 Joining room ${code} as ${myRole}...`);
+  
+  try {
+    mqttClient = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
+    mqttClient.on("connect", () => {
+      addLine("wire", `✅ Connected to room ${code} as ${myRole}`);
+      mqttClient.subscribe(`lantern/room/${code}`);
+      document.getElementById("status").innerHTML = `✅ Room: <span id="roomStatus">${code}</span> (${myRole})`;
+    });
+    mqttClient.on("message", (topic, message) => {
+      handleNetworkMessage(message.toString());
+    });
+    mqttClient.on("error", (err) => {
+      addLine("wire", `❌ MQTT error: ${err.message}`);
+    });
+  } catch (e) {
+    addLine("wire", `❌ Failed to connect: ${e.message}`);
+  }
+}
+
+async function handleNetworkMessage(wireHex) {
+  const py = window.pyodide;
+  py.globals.set("wire_hex", wireHex);
+  py.globals.set("my_role", myRole);
+  try {
+    const result = JSON.parse(await py.runPythonAsync(`
+import json
+from session import decrypt
+try:
+    env = {"ct": bytes.fromhex(wire_hex), "nonce": b"\\x00" * 12, "tag": b""}
+    mk_r = bob.recv_key() if my_role == "alice" else alice.recv_key()
+    plain = decrypt(env, mk_r, a_pub if my_role == "bob" else b_pub)
+    json.dumps({"plain": plain.decode("utf-8")})
+except Exception as e:
+    json.dumps({"error": str(e)})
+`));
+    if (result.plain) {
+      addLine(myRole === "alice" ? "bob" : "alice", `📥 ${myRole === "alice" ? "Bob" : "Alice"}: ${result.plain}`);
+    }
+  } catch (e) {
+    // Silent fail
+  }
+}
+
 async function main() {
   try {
     say("⏳ loadPyodide");
     const pyodide = await loadPyodide();
     window.pyodide = pyodide;
+    pyodide.globals.set("my_role", myRole);
     say("⏳ load cryptography");
     await pyodide.loadPackage("cryptography");
     say("⏳ load micropip");
@@ -116,9 +213,26 @@ async function sendMessage() {
   input.value = "";
   const py = window.pyodide;
   py.globals.set("user_text", text);
-  try {
-    addLine("alice", "📤 Alice: " + text);
-    const r1 = JSON.parse(await py.runPythonAsync(`
+  py.globals.set("my_role", myRole);
+  
+  if (currentRoom) {
+    try {
+      const result = JSON.parse(await py.runPythonAsync(`
+import json
+mk_s = alice.send_key() if my_role == "alice" else bob.send_key()
+env = encrypt(user_text.encode("utf-8"), mk_s, alice_id if my_role == "alice" else bob_id)
+json.dumps({"wire": env["ct"].hex(), "key": mk_s.hex()[:16]})
+`));
+      addLine(myRole, `📤 ${myRole === "alice" ? "Alice" : "Bob"}: ${text}`);
+      addLine("wire", `🔒 wire: ${result.wire.slice(0,40)}… | 🔑 ${result.key}…`);
+      mqttClient.publish(`lantern/room/${currentRoom}`, result.wire);
+    } catch (e) {
+      addLine("wire", "❌ " + (e.message || JSON.stringify(e)));
+    }
+  } else {
+    try {
+      addLine("alice", "📤 Alice: " + text);
+      const r1 = JSON.parse(await py.runPythonAsync(`
 import json
 if msg_num > 0:
     alice.dh_step(bob.public(), "send")
@@ -131,13 +245,13 @@ msg_num += 1
 json.dumps({"wire": env["ct"].hex()[:40], "key": mk_s.hex()[:16],
             "match": mk_s == mk_r, "plain": plain.decode("utf-8")})
 `));
-    addLine("wire", "🔒 wire: " + r1.wire + "… | 🔑 " + r1.key + "… | match: " + r1.match);
-    addLine("bob", "📥 Bob расшифровал / decrypted: " + r1.plain + " ✅");
+      addLine("wire", "🔒 wire: " + r1.wire + "… | 🔑 " + r1.key + "… | match: " + r1.match);
+      addLine("bob", "📥 Bob расшифровал / decrypted: " + r1.plain + " ✅");
 
-    const replies = ["Got it! / Принял!", "Loud and clear 📡 / Слышу отлично!", "👍", "Keys rotating 🔐 / Ключи крутятся!"];
-    const reply = replies[Math.floor(Math.random() * replies.length)];
-    py.globals.set("reply_text", reply);
-    const r2 = JSON.parse(await py.runPythonAsync(`
+      const replies = ["Got it! / Принял!", "Loud and clear 📡 / Слышу отлично!", "👍", "Keys rotating 🔐 / Ключи крутятся!"];
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      py.globals.set("reply_text", reply);
+      const r2 = JSON.parse(await py.runPythonAsync(`
 import json
 bob.dh_step(alice.public(), "send")
 alice.dh_step(bob.public(), "recv")
@@ -148,11 +262,12 @@ plain = decrypt(env, mk_r, b_pub)
 json.dumps({"wire": env["ct"].hex()[:40], "key": mk_s.hex()[:16],
             "match": mk_s == mk_r, "plain": plain.decode("utf-8")})
 `));
-    addLine("bob", "📤 Bob: " + reply);
-    addLine("wire", "🔒 wire: " + r2.wire + "… | 🔑 " + r2.key + "… | match: " + r2.match);
-    addLine("alice", "📥 Alice расшифровала / decrypted: " + r2.plain + " ✅");
-  } catch (e) {
-    addLine("wire", "❌ " + (e.message || JSON.stringify(e)));
+      addLine("bob", "📤 Bob: " + reply);
+      addLine("wire", "🔒 wire: " + r2.wire + "… | 🔑 " + r2.key + "… | match: " + r2.match);
+      addLine("alice", "📥 Alice расшифровала / decrypted: " + r2.plain + " ✅");
+    } catch (e) {
+      addLine("wire", "❌ " + (e.message || JSON.stringify(e)));
+    }
   }
 }
 main();
