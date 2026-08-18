@@ -68,6 +68,7 @@ const cancelRoomBtn = document.getElementById("cancelRoom");
 let mqttClient = null;
 let currentRoom = null;
 let myRole = "alice";
+const clientId = Math.random().toString(36).slice(2, 8);
 
 function say(t) { status.textContent = t; }
 function addLine(cls, text) {
@@ -96,11 +97,25 @@ joinRoomBtn.onclick = () => {
   roomModal.style.display = "none";
 };
 
-function joinRoom(code) {
+async function joinRoom(code) {
   currentRoom = code;
   myRole = Math.random() < 0.5 ? "alice" : "bob";
   addLine("wire", `🌐 Joining room ${code} as ${myRole}...`);
-  
+  try {
+    const py = window.pyodide;
+    py.globals.set("room_code", code);
+    await py.runPythonAsync(`
+import hashlib
+root = hashlib.sha256(("lantern-room-" + room_code).encode()).digest()
+alice.root = root
+bob.root = root
+alice.init_as_sender(bob.public())
+bob.init_as_receiver(alice.public())
+`);
+    addLine("wire", "🔑 Shared room root derived / общий корень комнаты получен");
+  } catch (e) {
+    addLine("wire", "❌ root init: " + (e.message || JSON.stringify(e)));
+  }
   try {
     mqttClient = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
     mqttClient.on("connect", () => {
@@ -119,27 +134,37 @@ function joinRoom(code) {
   }
 }
 
-async function handleNetworkMessage(wireHex) {
+async function handleNetworkMessage(payload) {
+  let data;
+  try { data = JSON.parse(payload); } catch (e) { return; }
+  if (!data || !data.wire || data.client === clientId) return;
   const py = window.pyodide;
-  py.globals.set("wire_hex", wireHex);
-  py.globals.set("my_role", myRole);
+  py.globals.set("wire_hex", data.wire);
+  py.globals.set("sender_role", data.role);
   try {
     const result = JSON.parse(await py.runPythonAsync(`
 import json
-from session import decrypt
+env = {"ct": bytes.fromhex(wire_hex), "nonce": b"\\x00" * 12, "tag": b""}
+if sender_role == "alice":
+    mk_r = bob.recv_key()
+    pub = a_pub
+else:
+    mk_r = alice.recv_key()
+    pub = b_pub
 try:
-    env = {"ct": bytes.fromhex(wire_hex), "nonce": b"\\x00" * 12, "tag": b""}
-    mk_r = bob.recv_key() if my_role == "alice" else alice.recv_key()
-    plain = decrypt(env, mk_r, a_pub if my_role == "bob" else b_pub)
+    plain = decrypt(env, mk_r, pub)
     json.dumps({"plain": plain.decode("utf-8")})
 except Exception as e:
     json.dumps({"error": str(e)})
 `));
     if (result.plain) {
-      addLine(myRole === "alice" ? "bob" : "alice", `📥 ${myRole === "alice" ? "Bob" : "Alice"}: ${result.plain}`);
+      const sender = data.role === "alice" ? "Alice" : "Bob";
+      addLine(data.role, `📥 ${sender}: ${result.plain}`);
+    } else if (result.error) {
+      addLine("wire", "⚠️ decrypt: " + result.error);
     }
   } catch (e) {
-    // Silent fail
+    // silent fail
   }
 }
 
@@ -225,7 +250,8 @@ json.dumps({"wire": env["ct"].hex(), "key": mk_s.hex()[:16]})
 `));
       addLine(myRole, `📤 ${myRole === "alice" ? "Alice" : "Bob"}: ${text}`);
       addLine("wire", `🔒 wire: ${result.wire.slice(0,40)}… | 🔑 ${result.key}…`);
-      mqttClient.publish(`lantern/room/${currentRoom}`, result.wire);
+      mqttClient.publish(`lantern/room/${currentRoom}`,
+        JSON.stringify({client: clientId, role: myRole, wire: result.wire}));
     } catch (e) {
       addLine("wire", "❌ " + (e.message || JSON.stringify(e)));
     }
